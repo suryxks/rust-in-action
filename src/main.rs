@@ -1,4 +1,6 @@
 use std::convert::TryInto;
+
+use num::Complex;
 fn main() {
     let a = 10;
     let b: i32 = 20;
@@ -45,8 +47,14 @@ fn main() {
     let absolute_difference = (expected - result).abs();
     println!("{} ,{} , {}", absolute_difference, result, expected);
 
-    let x: f32 = 1.0 / 0.0;
-    assert!(x.is_nan())
+    // let x: f32 = 1.0 / 0.0;
+    // assert!(x.is_nan());
+
+    let a = Complex { re: 2.1, im: -1.2 };
+    let b = Complex::new(11.1, 22.2);
+    let complex_result = a + b;
+
+    println!("{} + {}i", complex_result.re, complex_result.im)
 }
 
 fn add(i: i32, j: i32) -> i32 {
