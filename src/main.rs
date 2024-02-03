@@ -1,7 +1,9 @@
 use std::convert::TryInto;
+// use std::fs::File;
 use num::Complex;
 use std::time::{ Duration, Instant };
 use std::ops::{ Add };
+use std::fmt::Debug;
 fn main() {
     let a = 10;
     let b: i32 = 20;
@@ -105,6 +107,26 @@ fn main() {
     println!("{}", floats);
     println!("{}", ints);
     println!("{:?}", durations);
+
+    let one = [1, 2, 4];
+    let two: [u8; 3] = [1, 2, 3];
+    let blank1 = [0; 3];
+    let blank2: [u8; 3] = [0; 3];
+
+    let arrays = [one, two, blank1, blank2];
+    for array in &arrays {
+        println!("{:?}", array);
+        for n in array.iter() {
+            print!("\t{} + 10 = {}", n, n + 10);
+        }
+        let mut sum = 0;
+        for i in 0..array.len() {
+            sum += array[i];
+        }
+        println!("\t({:?} = {})", a, sum);
+    }
+    main2();
+    main3()
 }
 
 fn add(i: i32, j: i32) -> i32 {
@@ -117,4 +139,108 @@ fn add_with_lifetimes<'a, 'b>(i: &'a i32, j: &'b i32) -> i32 {
 
 fn add_generic<T: Add<Output = T>>(a: T, b: T) -> T {
     a + b
+}
+#[derive(Debug)]
+struct File {
+    name: String,
+    data: Vec<u8>,
+}
+
+impl File {
+    fn new(name: &str) -> File {
+        File {
+            name: String::from(name),
+            data: Vec::new(),
+        }
+    }
+    fn new_with_data(name: &str, data: &Vec<u8>) -> File {
+        let mut f = File::new(name);
+        f.data = data.clone();
+        f
+    }
+    fn read(self: &File, save_to: &mut Vec<u8>) -> usize {
+        let mut tmp = self.data.clone();
+        let read_length = tmp.len();
+        save_to.reserve(read_length);
+        save_to.append(&mut tmp);
+        read_length
+    }
+}
+struct Hostname(String);
+
+fn connect(host: Hostname) {
+    println!("connected to {}", host.0)
+}
+
+fn open(f: &mut File) -> bool {
+    true
+}
+fn close(f: &mut File) -> bool {
+    false
+}
+
+fn read(f: &File, save_to: &mut Vec<u8>) -> usize {
+    let mut tmp = f.data.clone();
+    let read_length = tmp.len();
+
+    save_to.reserve(read_length);
+    save_to.append(&mut tmp);
+    read_length
+}
+fn main2() {
+    let f1 = File {
+        name: String::from("f1.txt"),
+        data: Vec::new(),
+    };
+
+    let f1_name = &f1.name;
+    let f1_length = &f1.data.len();
+
+    println!("{:?}", f1);
+
+    println!("{} is {} bytes long", f1_name, f1_length);
+
+    let mut f2 = File { name: String::from("2.txt"), data: Vec::new() };
+
+    let mut buffer: Vec<u8> = vec![];
+
+    open(&mut f2);
+    let f2_length = read(&f2, &mut buffer);
+    close(&mut f2);
+
+    let text = String::from_utf8_lossy(&buffer);
+
+    println!("{:?}", f2);
+    println!("{} is {} bytes long", &f2.name, f2_length);
+    println!("{}", text);
+
+    let f3 = File::new("f3.txt");
+
+    let f3_name = &f3.name;
+    let f3_length = f3.data.len();
+
+    println!("{:?}", f3);
+    println!("{} is {} bytes long", f3_name, f3_length);
+
+    let f4_data: Vec<u8> = vec![114, 117, 115, 116, 33];
+
+    let mut f4 = File::new_with_data("2.txt", &f4_data);
+
+    let mut buffer4: Vec<u8> = vec![];
+
+    open(&mut f4);
+    let f4_length = f4.read(&mut buffer);
+    close(&mut f4);
+
+    let text = String::from_utf8_lossy(&buffer4);
+
+    println!("{:?}", f4);
+    println!("{} is {} bytes long", &f4.name, f4_length);
+    println!("{}", text)
+}
+
+fn main3() {
+    let ordinary_string = String::from("localhost");
+    let host = Hostname(ordinary_string.clone());
+    connect(host);
 }
