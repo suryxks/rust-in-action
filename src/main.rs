@@ -3,7 +3,10 @@ use std::convert::TryInto;
 use num::Complex;
 use std::time::{ Duration, Instant };
 use std::ops::{ Add };
-use std::fmt::Debug;
+use std::fmt::{ write, Debug };
+use rand::prelude::*;
+use std::fmt;
+use std::fmt::{ Display };
 fn main() {
     let a = 10;
     let b: i32 = 20;
@@ -125,7 +128,7 @@ fn main() {
         }
         println!("\t({:?} = {})", a, sum);
     }
-    main2();
+    // main2();
     main3()
 }
 
@@ -140,57 +143,74 @@ fn add_with_lifetimes<'a, 'b>(i: &'a i32, j: &'b i32) -> i32 {
 fn add_generic<T: Add<Output = T>>(a: T, b: T) -> T {
     a + b
 }
+fn one_in(denominator: u32) -> bool {
+    thread_rng().gen_ratio(1, denominator)
+}
+#[derive(Debug, PartialEq)]
+pub enum FileState {
+    Open,
+    Closed,
+}
 #[derive(Debug)]
-struct File {
-    name: String,
+pub struct File {
+    pub name: String,
     data: Vec<u8>,
+    pub state: FileState,
 }
 
+impl Display for FileState {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match *self {
+            FileState::Open => write!(f, "OPEN"),
+            FileState::Closed => write!(f, "CLOSED"),
+        }
+    }
+}
+impl Display for File {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "<{} ({})>", self.name, self.state)
+    }
+}
 impl File {
-    fn new(name: &str) -> File {
+    pub fn new(name: &str) -> File {
         File {
             name: String::from(name),
             data: Vec::new(),
+            state: FileState::Closed,
         }
     }
-    fn new_with_data(name: &str, data: &Vec<u8>) -> File {
+    pub fn new_with_data(name: &str, data: &Vec<u8>) -> File {
         let mut f = File::new(name);
         f.data = data.clone();
         f
     }
-    fn read(self: &File, save_to: &mut Vec<u8>) -> usize {
+    pub fn read(self: &File, save_to: &mut Vec<u8>) -> Result<usize, String> {
+        if self.state != FileState::Open {
+            return Err(String::from("File must be open"));
+        }
+
         let mut tmp = self.data.clone();
         let read_length = tmp.len();
         save_to.reserve(read_length);
         save_to.append(&mut tmp);
-        read_length
+        Ok(read_length)
     }
 }
-struct Hostname(String);
 
-fn connect(host: Hostname) {
-    println!("connected to {}", host.0)
+fn open(mut f: File) -> Result<File, String> {
+    f.state = FileState::Open;
+    Ok(f)
+}
+fn close(mut f: File) -> Result<File, String> {
+    f.state = FileState::Closed;
+    Ok(f)
 }
 
-fn open(f: &mut File) -> bool {
-    true
-}
-fn close(f: &mut File) -> bool {
-    false
-}
-
-fn read(f: &File, save_to: &mut Vec<u8>) -> usize {
-    let mut tmp = f.data.clone();
-    let read_length = tmp.len();
-
-    save_to.reserve(read_length);
-    save_to.append(&mut tmp);
-    read_length
-}
 fn main2() {
     let f1 = File {
         name: String::from("f1.txt"),
         data: Vec::new(),
+        state: FileState::Closed,
     };
 
     let f1_name = &f1.name;
@@ -200,18 +220,18 @@ fn main2() {
 
     println!("{} is {} bytes long", f1_name, f1_length);
 
-    let mut f2 = File { name: String::from("2.txt"), data: Vec::new() };
+    let mut f2 = File { name: String::from("2.txt"), data: Vec::new(), state: FileState::Closed };
 
     let mut buffer: Vec<u8> = vec![];
 
-    open(&mut f2);
-    let f2_length = read(&f2, &mut buffer);
-    close(&mut f2);
+    // open(&mut f2);
+    // let f2_length = read(&f2, &mut buffer);
+    // close(&mut f2);
 
     let text = String::from_utf8_lossy(&buffer);
 
     println!("{:?}", f2);
-    println!("{} is {} bytes long", &f2.name, f2_length);
+    // println!("{} is {} bytes long", &f2.name, f2_length);
     println!("{}", text);
 
     let f3 = File::new("f3.txt");
@@ -228,19 +248,86 @@ fn main2() {
 
     let mut buffer4: Vec<u8> = vec![];
 
-    open(&mut f4);
+    // open(&mut f4);
     let f4_length = f4.read(&mut buffer);
-    close(&mut f4);
+    // close(&mut f4);
 
     let text = String::from_utf8_lossy(&buffer4);
 
     println!("{:?}", f4);
-    println!("{} is {} bytes long", &f4.name, f4_length);
+    // println!("{} is {} bytes long", &f4.name, f4_length);
     println!("{}", text)
 }
 
 fn main3() {
-    let ordinary_string = String::from("localhost");
-    let host = Hostname(ordinary_string.clone());
-    connect(host);
+    let f4_data: Vec<u8> = vec![114, 117, 115, 116, 33];
+    let mut f4 = File::new_with_data("4.txt", &f4_data);
+
+    let mut buffer: Vec<u8> = vec![];
+
+    f4 = open(f4).unwrap();
+    let f4_length = f4.read(&mut buffer).unwrap();
+
+    f4 = close(f4).unwrap();
+
+    let text = String::from_utf8_lossy(&buffer);
+
+    println!("{:?}", f4);
+    println!("{} is {} bytes long", &f4.name, f4_length);
+
+    println!("{}", text);
+
+    let log =
+        "BEGIN Transaction XK342
+UPDATE 234:LS/32231 {\"price\": 31.00} -> {\"price\": 40.00}
+DELETE 342:LO/22111";
+
+    for line in log.lines() {
+        let parse_result = parse_log(line);
+        println!("{:?}", parse_result);
+    }
+
+    let mut f5 = File::new("5.txt");
+    let mut buffer: Vec<u8> = vec![];
+
+    if f5.read(&mut buffer).is_err() {
+        println!("error checking is working");
+    }
+    f5 = open(f5).unwrap();
+
+    let f5_length = f5.read(&mut buffer).unwrap();
+
+    f5 = close(f5).unwrap();
+
+    let text = String::from_utf8_lossy(&buffer);
+    println!("{:?}", f5);
+    println!("{} is {} bytes long", &f5.name, f5_length);
+
+    println!("{}", text);
+}
+
+#[derive(Debug)]
+enum Event {
+    Update,
+    Delete,
+    Unknown,
+}
+
+type Message = String;
+
+fn parse_log(line: &str) -> (Event, Message) {
+    let parts: Vec<_> = line.splitn(2, ' ').collect();
+
+    if parts.len() == 1 {
+        return (Event::Unknown, String::from(line));
+    }
+
+    let event = parts[0];
+    let rest = String::from(parts[1]);
+
+    match event {
+        "UPDATE" | "update" => (Event::Update, rest),
+        "DELETE" | "delete" => (Event::Delete, rest),
+        _ => (Event::Unknown, String::from(line)),
+    }
 }
