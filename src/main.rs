@@ -7,7 +7,14 @@ use std::fmt::{ write, Debug };
 use rand::prelude::*;
 use std::fmt;
 use std::fmt::{ Display };
+use std::rc::Rc;
 fn main() {
+    // basics();
+    // main2();
+    // main3();
+    borrow();
+}
+fn basics() {
     let a = 10;
     let b: i32 = 20;
     let c = 30i32;
@@ -128,10 +135,7 @@ fn main() {
         }
         println!("\t({:?} = {})", a, sum);
     }
-    // main2();
-    main3()
 }
-
 fn add(i: i32, j: i32) -> i32 {
     i + j
 }
@@ -313,9 +317,9 @@ enum Event {
     Unknown,
 }
 
-type Message = String;
+type Messages = String;
 
-fn parse_log(line: &str) -> (Event, Message) {
+fn parse_log(line: &str) -> (Event, Messages) {
     let parts: Vec<_> = line.splitn(2, ' ').collect();
 
     if parts.len() == 1 {
@@ -330,4 +334,118 @@ fn parse_log(line: &str) -> (Event, Message) {
         "DELETE" | "delete" => (Event::Delete, rest),
         _ => (Event::Unknown, String::from(line)),
     }
+}
+
+#[derive(Debug)]
+enum StatusMessage {
+    OK,
+}
+#[derive(Debug, Clone, Copy)]
+struct CubeSat {
+    id: u64,
+}
+
+#[derive(Debug)]
+struct Mailbox {
+    messages: Vec<Message>,
+}
+#[derive(Debug)]
+struct Message {
+    to: u64,
+    content: String,
+}
+struct Groundstation;
+impl Groundstation {
+    fn send(&self, msg: Message, mailbox: &mut Mailbox) {
+        mailbox.post(msg)
+    }
+    fn connect(&self, sat_id: u64) -> CubeSat {
+        CubeSat { id: sat_id }
+    }
+}
+
+impl CubeSat {
+    fn recv(&self, mailbox: &mut Mailbox) -> Option<Message> {
+        mailbox.deliver(&self)
+    }
+}
+
+impl Mailbox {
+    fn post(&mut self, msg: Message) {
+        self.messages.push(msg)
+    }
+    fn deliver(&mut self, recipient: &CubeSat) -> Option<Message> {
+        for i in 0..self.messages.len() {
+            if self.messages[i].to == recipient.id {
+                let msg = self.messages.remove(i);
+                return Some(msg);
+            }
+        }
+        None
+    }
+}
+fn check_status(sat_id: CubeSat) -> CubeSat {
+    // StatusMessage::OK
+    sat_id
+}
+
+fn borrow() {
+    let sat_a = CubeSat { id: 0 };
+    let sat_b = CubeSat { id: 1 };
+    let sat_c = CubeSat { id: 2 };
+
+    let sat_a = check_status(sat_a);
+    let sat_b = check_status(sat_b);
+    let sat_c = check_status(sat_c);
+
+    println!("a: {:?}, b: {:?}, c: {:?}", sat_a, sat_b, sat_c);
+
+    let a_status = check_status(sat_a);
+    let b_status = check_status(sat_b);
+    let c_status = check_status(sat_c);
+
+    println!("a: {:?}, b: {:?}, c: {:?}", a_status, b_status, c_status);
+
+    let base = Groundstation {};
+    let mut sat_a = CubeSat {
+        id: 0,
+        // mailbox: Mailbox {
+        //     messages: vec![],
+        // },
+    };
+    println!("t0: {:?}", sat_a);
+    // base.send(&mut sat_a, Message::from("hellot ther!"));
+
+    println!("t1: {:?}", sat_a);
+
+    // let msg = sat_a.recv();
+    println!("t2: {:?}", sat_a);
+    // println!("msg: {:?}", msg);
+
+    let mut mail = Mailbox { messages: vec![] };
+    let base = Groundstation {};
+    let sat_ids = fetch_sat_ids();
+
+    for sat_id in sat_ids {
+        let sat = base.connect(sat_id);
+        let msg = Message { to: sat_id, content: String::from("hello") };
+        base.send(msg, &mut mail);
+    }
+    let sat_ids = fetch_sat_ids();
+
+    for sat_id in sat_ids {
+        let sat = base.connect(sat_id);
+        let msg = sat.recv(&mut mail);
+        println!("{:?}: {:?}", sat, msg);
+    }
+}
+
+// Resolving ownership issues
+// * use references where full ownership is not required
+// * Duplicate the value
+// * Refactor code to reduce the number of long-lived objects
+// * Wrap your data in a type designed to assist with movement issues.
+
+fn fetch_sat_ids() -> Vec<u64> {
+    vec![1, 2, 3]
 }
