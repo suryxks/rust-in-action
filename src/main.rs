@@ -1,3 +1,5 @@
+mod data_in_depth;
+
 use std::convert::TryInto;
 // use std::fs::File;
 use num::Complex;
@@ -12,7 +14,8 @@ fn main() {
     // basics();
     // main2();
     // main3();
-    borrow();
+    // borrow();
+    data_in_depth::data()
 }
 fn basics() {
     let a = 10;
